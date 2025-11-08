@@ -1,4 +1,5 @@
 'use client';
+
 import { useState } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -7,19 +8,33 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const onFinish = (values) => {
+  const onFinish = async (values) => {
     setLoading(true);
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    const user = users.find(
-      (u) => u.email === values.email && u.password === values.password
-    );
+    try {
+      const res = await fetch('http://172.20.10.4:3000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userEmail: values.email,
+          password: values.password,
+        }),
+      });
 
-    if (user) {
-      localStorage.setItem('loggedInUser', JSON.stringify(user));
-      message.success('Login successful!');
-      router.push('/dashboard');
-    } else {
-      message.error('Invalid credentials!');
+      const data = await res.json();
+
+      if (res.ok) {
+        // Store user or token in localStorage
+        localStorage.setItem('loggedInUser', JSON.stringify(data));
+        message.success('Login successful!');
+        router.push('/dashboard');
+      } else {
+        message.error(data?.message || 'Invalid credentials!');
+      }
+    } catch (error) {
+      console.error(error);
+      message.error('Server error. Try again later.');
     }
     setLoading(false);
   };
@@ -28,7 +43,7 @@ export default function LoginPage() {
     <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center' }}>
       <Card title="Login" style={{ width: 350 }}>
         <Form name="login" onFinish={onFinish} layout="vertical">
-          <Form.Item label="Email" name="email" rules={[{ required: true }]}>
+          <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
             <Input placeholder="Enter email" />
           </Form.Item>
           <Form.Item label="Password" name="password" rules={[{ required: true }]}>
